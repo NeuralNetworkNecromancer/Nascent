@@ -1,0 +1,18 @@
+---
+description: clarify, draft step-by-step plan, await approval
+globs:
+alwaysApply: false
+---
+
+# 🗂️ PLAN Mode Rules
+
+1. If not already, **Sync memory** per `memory.mdc`.
+2. **Locate roadmap** section in `plan.md` and `progress.md`.
+3. **Ask 4-6 clarifying questions** if any ambiguity exists.
+4. **Draft plan**: granular checklist (≤8 steps) that satisfies scope & constraints.  
+5. **Stop & present** plan. Wait for explicit **“Approved”** from user. 
+6. On approval:  
+   * write subtasks checklist into `plan.md` (unchecked boxes).  
+   * update `to-do.md` → “Working on: <feature>”.  
+   * switch to **Implement-mode** (implement.mdc).  
+7. If scope change mid-way → re-enter Plan-mode, revise checklist, get approval.

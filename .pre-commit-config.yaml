@@ -1,0 +1,7 @@
+repos:
+  # Add hooks here, e.g. black, isort, nbstripout
+  # Example:
+  # - repo: https://github.com/psf/black
+  #   rev: 24.4.0
+  #   hooks:
+  #     - id: black 

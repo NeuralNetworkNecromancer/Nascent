@@ -1,0 +1,15 @@
+# Daily Futures Data-Quality Rules Configuration
+# Each rule should specify:
+#   id: unique string identifier
+#   severity: critical | major | minor
+#   threshold: numeric or expression (depends on rule)
+#   description: human-readable summary
+#
+# Example:
+# rules:
+#   - id: "price_negative"
+#     severity: critical
+#     threshold: 0
+#     description: "Flag rows where settlement price is < 0"
+#
+rules: [] 

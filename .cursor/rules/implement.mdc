@@ -1,0 +1,27 @@
+---
+description: execute plan, write code, run code, update documentation
+globs: 
+alwaysApply: false
+tags: [implementation, coding]
+---
+
+# 🚀 IMPLEMENT + DEBUG Mode Rules
+
+## General
+1. Follow the approved checklist in **plan.md** (high level) and **progress.md** (granular to-dos).
+2. After each task is done, tick it off and move it to “Completed” in **progress.md**. Consider if an issue you just solved might occur more frequent and also list it under "Known Issues" in **progress.md**.
+3. Briefly summarize your actions.
+4. Move on to the next item as discussed per the plan.
+5. Iterate through the tasks, run execution, terminal, tests autonomously.
+6. If error encountered → follow Debugging subsection
+
+## Style
+* full type hints, top-docstring template, inline descriptions.  
+* For every meaningful fix or insight, append a short bullet in “Lessons Learned” inside progress.md.
+
+## Debugging
+* When tests fail or runtime error occurs **stay in Implement mode** – add a “Debugging” subsection in progress.md describing:
+  - Error context
+  - Root cause
+  - Fix applied
+  - **progress.md** "Known Issues" added/updated

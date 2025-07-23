@@ -1,0 +1,17 @@
+---
+description: include project context
+globs:
+alwaysApply: true
+---
+
+# 📚 Memory Rule – Load Core Context
+
+## ALWAYS include these docs in every prompt:
+- memory_bank/overview.md
+- memory_bank/product_context.md
+- memory_bank/system.md
+- memory_bank/stack.md
+- memory_bank/progress.md
+- memory_bank/plan.md
+
+If any referenced file is missing or empty, PAUSE and ask the user to create/update it before continuing.
