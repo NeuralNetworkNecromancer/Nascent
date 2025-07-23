@@ -9,3 +9,5 @@ black
 isort
 pytest
 nbstripout 
+seaborn
+streamlit 

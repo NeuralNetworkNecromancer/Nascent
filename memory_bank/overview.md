@@ -18,37 +18,33 @@ A reproducible, config‑driven pipeline that ingests the daily‑futures CSV, r
 
 ## Repository Layout
 .
-├── .cursor/
-│   └── rules/
-│       ├── memory.mdc        # always‑load memory bank
-│       ├── plan.mdc          # rules for planning mode
-│       └── implement.mdc     # implementation & debug rules
-├── data/
-│   ├── raw/                  # original futures_dataset.csv
-│   └── processed/            # cleaned & flagged outputs
-├── dq_config.yml             # severity & threshold config
-├── docker-compose.yml        # spins up local Qdrant
-├── notebooks/
-│   ├── 00_exploration.ipynb
-│   ├── 01_quality_checks.ipynb
-│   ├── 02_cleaning.ipynb
-│   ├── 03_summary.ipynb
-│   └── 04_enrich.ipynb
+├── app/
+│   ├── __init__.py
+│   ├── main.py                # Streamlit landing page (home)
+│   ├── pages/                 # Multi-page reports
+│   │   ├── 1_Coverage_and_Duplicates.py
+│   │   ├── 2_OHLC_Integrity.py
+│   │   ├── 3_Flatlines_and_Stale.py
+│   │   └── 4_Outliers_and_Volume.py
+│   └── data/                    # small demo CSVs for Cloud (optional)
+│       ├── raw/                 # original futures_dataset.csv
+│       └──processed/            # cleaned & flagged outputs
 ├── src/
 │   ├── __init__.py
-│   ├── quality_checks.py     # validation functions
-│   └── agent_enrich.py       # row-level LLM enrichment
-├── memory_bank/
-│   ├── overview.md
-│   ├── plan.md
-│   ├── product_context.md
-│   ├── progress.md
-│   ├── stack.md
-│   └── system.md
+│   ├── eda_utils.py           # reusable diagnostics
+│   ├── quality_checks.py      # rule implementations (TBD)
+│   └── agent_enrich.py        # row-level LLM enrichment (stub)
 ├── tests/
 │   └── test_quality_checks.py
-├── requirements.txt
-├── environment.yml
-├── .pre-commit-config.yaml
+├── data/
+│   └── raw/futures_dataset.csv   # full dataset (git-large-file or ignored in Cloud)
+├── dq_config.yml              # severity & threshold config
+├── docker-compose.yml         # local Qdrant service
+├── requirements.txt           # Python deps for app & src
+├── .pre-commit-config.yaml    # formatting hooks
 ├── .gitignore
-└── README.md
+├── README.md
+├── memory_bank/ …             # context & progress docs
+├── .cursor/
+│   └── rules/ (memory.mdc, plan.mdc, implement.mdc)
+└── streamlit_app.py           # thin launcher (imports app.main)

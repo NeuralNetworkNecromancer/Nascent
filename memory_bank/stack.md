@@ -8,4 +8,4 @@
 | LLM (enrich)     | OpenAI GPT‑4o         | Used by `agent_enrich.py`                                |
 | Vector DB        | Qdrant (via Docker)   | `docker-compose.yml` spins up a reproducible local store |
 | Containerisation | Docker / Compose      | Encapsulates Qdrant + optional helper services           |
-| CI / Lint        | black, isort, nbstripout, pytest | Run locally before commits; no GitHub Actions for now |
+| Visualization    | Streamlit             | Interactive dashboard replacing EDA notebook             |
