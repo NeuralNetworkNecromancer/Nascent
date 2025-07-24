@@ -12,3 +12,5 @@ seaborn
 streamlit 
 tenacity 
 chromadb 
+pysqlite3-binary>=0.5.2
+packaging>=23.0 

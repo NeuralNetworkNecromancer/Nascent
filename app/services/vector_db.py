@@ -12,8 +12,47 @@ from __future__ import annotations
 import logging
 from typing import List
 
-import chromadb
-from chromadb.api.types import EmbeddingFunction
+# ---------------------------------------------------------------------------
+# Ensure a modern SQLite (≥3.35) – required by Chroma. Streamlit Cloud ships
+# with an older build, so we monkey-patch with pysqlite3-binary if necessary.
+# ---------------------------------------------------------------------------
+
+import sqlite3
+from packaging import version
+
+if version.parse(sqlite3.sqlite_version) < version.parse("3.35.0"):
+    try:
+        import pysqlite3  # type: ignore
+
+        import sys
+
+        sys.modules["sqlite3"] = sys.modules.pop("pysqlite3")
+        import sqlite3 as _patched  # noqa: F401 (ensures module initialised)
+        logging.getLogger(__name__).info(
+            "Patched sqlite3 with pysqlite3-binary (%s)", _patched.sqlite_version
+        )
+    except ImportError as _err:  # fall back to no-op handling later
+        logging.getLogger(__name__).warning(
+            "pysqlite3-binary not available (%s); Chroma may fail", _err
+        )
+
+
+try:
+    import chromadb
+    from chromadb.api.types import EmbeddingFunction  # type: ignore
+
+    _CHROMA_AVAILABLE = True
+except (ImportError, RuntimeError) as exc:  # RuntimeError for sqlite version
+    # Log and fall back to no-op vector store.
+    import warnings  # noqa: WPS433 (standard lib)
+
+    warnings.warn(
+        f"ChromaDB unavailable – vector search disabled. Reason: {exc}",
+        RuntimeWarning,
+    )
+    chromadb = None  # type: ignore
+    _CHROMA_AVAILABLE = False
+
 
 from app.constants import CHROMA_PATH
 from app.services.openai_service import embed
@@ -21,12 +60,19 @@ from app.services.openai_service import embed
 logger = logging.getLogger(__name__)
 
 
-class OpenAIEmbeddingFunction(EmbeddingFunction):
-    """EmbeddingFunction adapter that delegates to OpenAI embeddings."""
+if _CHROMA_AVAILABLE:
 
-    def __call__(self, texts: List[str]) -> List[List[float]]:  # type: ignore[override]
-        logger.debug("Generating %d embeddings via OpenAI", len(texts))
-        return embed(texts)
+    class OpenAIEmbeddingFunction(EmbeddingFunction):
+        """EmbeddingFunction adapter that delegates to OpenAI embeddings."""
+
+        def __call__(self, texts: List[str]) -> List[List[float]]:  # type: ignore[override]
+            logger.debug("Generating %d embeddings via OpenAI", len(texts))
+            return embed(texts)
+
+else:
+    # Dummy placeholder so type-checkers still find the symbol
+    class OpenAIEmbeddingFunction:  # type: ignore
+        pass
 
 
 # ---------------------------------------------------------------------------
@@ -34,25 +80,33 @@ class OpenAIEmbeddingFunction(EmbeddingFunction):
 # ---------------------------------------------------------------------------
 
 
-def get_client() -> chromadb.PersistentClient:
-    """Return a (cached) persistent Chroma client bound to CHROMA_PATH."""
-    # We intentionally create a new client on every call – chromadb is lightweight
-    # and manages its own connection pooling. If this becomes a bottleneck we can
-    # add functools.lru_cache.
-    return chromadb.PersistentClient(path=CHROMA_PATH)
+if _CHROMA_AVAILABLE:
+
+    def get_client() -> chromadb.PersistentClient:  # type: ignore
+        """Return a (cached) persistent Chroma client bound to CHROMA_PATH."""
+        return chromadb.PersistentClient(path=CHROMA_PATH)  # type: ignore
 
 
-def get_collection(name: str = "futures_rag") -> chromadb.Collection:
-    """Return a Chroma collection configured with OpenAI embeddings."""
-    client = get_client()
-    return client.get_or_create_collection(
-        name=name,
-        embedding_function=OpenAIEmbeddingFunction(),
-    )
+    def get_collection(name: str = "futures_rag"):  # type: ignore
+        """Return a Chroma collection configured with OpenAI embeddings."""
+        client = get_client()
+        return client.get_or_create_collection(
+            name=name,
+            embedding_function=OpenAIEmbeddingFunction(),
+        )
+
+else:
+
+    def get_client():  # type: ignore
+        raise RuntimeError("ChromaDB not available in this environment.")
+
+
+    def get_collection(name: str = "futures_rag"):  # type: ignore
+        raise RuntimeError("ChromaDB not available; vector store disabled.")
 
 
 # ---------------------------------------------------------------------------
-# CRUD helpers
+# CRUD helpers (no-op fallbacks when Chroma is unavailable)
 # ---------------------------------------------------------------------------
 
 
@@ -64,6 +118,10 @@ def add_documents(
     collection_name: str = "futures_rag",
 ) -> None:
     """Add documents with optional metadata/ids to the specified collection."""
+    if not _CHROMA_AVAILABLE:
+        logger.warning("ChromaDB unavailable – skipping add_documents call.")
+        return
+
     collection = get_collection(collection_name)
     logger.info(
         "Adding %d documents to Chroma collection '%s'", len(texts), collection_name
@@ -83,9 +141,10 @@ def query(
     collection_name: str = "futures_rag",
 ):
     """Query the vector store and return the matching documents and metadata."""
-    logger.debug(
-        "Querying Chroma with %d text(s) (top %d results)", len(texts), n_results
-    )
+    if not _CHROMA_AVAILABLE:
+        logger.warning("ChromaDB unavailable – returning empty query result.")
+        return {}
+
     collection = get_collection(collection_name)
     return collection.query(query_texts=texts, n_results=n_results)
 
