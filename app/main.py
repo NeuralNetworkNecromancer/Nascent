@@ -9,10 +9,14 @@ from datetime import date
 from app.utils.caching import load_data
 from app.utils.config import get_config, set_config, DEFAULT_SEVERITIES
 from src import quality_checks as eu
+from app.services.vector_db import query as rag_query
+from pathlib import Path
 
 DESCRIPTIONS = eu.DESCRIPTIONS
 DEFAULT_SEVERITIES = DEFAULT_SEVERITIES
 CHECK_FUNCTIONS = eu.CHECK_FUNCTIONS
+
+TEMPLATE_CHAT = Path("app/prompts/chat_rag.md").read_text()
 
 st.set_page_config(page_title="Daily Futures – DQ Dashboard", layout="wide")
 
@@ -395,19 +399,74 @@ with chat_col:
     user_prompt = st.chat_input("Ask about the data or quality checks…")
 
     if user_prompt:
-        st.session_state.chat_msgs.append({"role": "user", "content": user_prompt})
-        # Get assistant reply
+        # --- Retrieval-Augmented Generation (RAG) ---
+        # Fetch top-N similar rows from the vector store
+        N_RESULTS = 10
+        try:
+            rag = rag_query([user_prompt], n_results=N_RESULTS)
+            metas = rag.get("metadatas", [[]])[0]
+            dists = rag.get("distances", [[]])[0]
+        except Exception as e:
+            metas = []
+            st.warning(f"Chroma query failed: {e}")
+
+        # Build context text for the LLM
+        ctx_lines = []
+        src_refs = []
+        import json, copy
+        for m, dist in zip(metas, dists):
+            symbol = m.get("Symbol", "?")
+            date = m.get("Date", "?")
+            score = 1 - float(dist) if dist is not None else None
+            row_plus = copy.deepcopy(m)
+            row_plus["similarity"] = round(score, 4) if score is not None else None
+            ctx_lines.append(json.dumps(row_plus, default=str, indent=2))
+            src_refs.append(f"{symbol} {date} – {score:.2f}" if score is not None else f"{symbol} {date}")
+        context_text = "\n".join(ctx_lines)
+
+        # Assemble message list with ephemeral context via external template
+        system_prompt = TEMPLATE_CHAT.replace("{{context}}", context_text)
+        messages_to_send = (
+            st.session_state.chat_msgs
+            + [{"role": "system", "content": system_prompt}]
+            + [{"role": "user", "content": user_prompt}]
+        )
+
+        # --- DEBUG: print composed prompt to terminal for inspection ---
+        def _pretty(msgs):
+            parts = []
+            for m in msgs:
+                role = m.get("role", "?").upper()
+                content = m.get("content", "").strip()
+                parts.append(f"\n[{role}]\n{content}\n")
+            return "\n".join(parts)
+
+        print("\n" + "=" * 40 + " COMPILED PROMPT " + "=" * 40)
+        print(_pretty(messages_to_send))
+        print("=" * 94 + "\n")
+
+        # Call OpenAI Chat
         if OPENAI_API_KEY:
             with st.spinner("Thinking…"):
                 try:
-                    resp = oai.chat(st.session_state.chat_msgs)
-                    reply_content = resp.choices[0].message.content.strip()
+                    resp = oai.chat(messages_to_send)
+                    reply_main = resp.choices[0].message.content.strip()
                 except Exception as e:
-                    reply_content = f"Error: {e}"
+                    reply_main = f"Error: {e}"
         else:
-            reply_content = "OpenAI key not set."
+            reply_main = "OpenAI key not set."
 
-        st.session_state.chat_msgs.append({"role": "assistant", "content": reply_content})
+        # Append sources beneath answer
+        if src_refs:
+            sources_md = "\n\n**Sources:**\n" + "\n".join(f"- {r}" for r in src_refs)
+        else:
+            sources_md = ""
+
+        full_reply = reply_main + sources_md
+
+        # Update chat history (user + assistant) – omit context message for cleanliness
+        st.session_state.chat_msgs.append({"role": "user", "content": user_prompt})
+        st.session_state.chat_msgs.append({"role": "assistant", "content": full_reply})
 
     # --- Render history newest → oldest under the input ---
     for m in reversed(st.session_state.chat_msgs[1:]):  # skip system

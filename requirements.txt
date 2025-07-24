@@ -13,3 +13,4 @@ nbstripout
 seaborn
 streamlit 
 tenacity 
+chromadb 

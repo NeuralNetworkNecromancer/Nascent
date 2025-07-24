@@ -23,3 +23,6 @@ load_dotenv()
 OPENAI_API_KEY: str | None = getenv("OPENAI_API_KEY")
 OPENAI_MODEL: str = getenv("OPENAI_MODEL", "gpt-4o")
 OPENAI_EMBED_MODEL: str = getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-ada-002")
+
+# ── ChromaDB ────────────────────────────────────────────────────────────────
+CHROMA_PATH: str = getenv("CHROMA_PATH", ".chromadb")

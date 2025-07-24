@@ -11,14 +11,15 @@
 5. Implemented offline AI enrichment:
    • `scripts/enrich_full_dataset.py` (GPT-3.5, progress bar, batching).
    • `scripts/merge_enriched.py` for safe merge/dedup.
-   • Dashboard auto-loads `1full_enriched_dataset.csv` and displays `AI_Explanation` & `AI_Trend`.
+   • Dashboard auto-loads `enriched_futures_dataset.csv` and displays `AI_Explanation` & `AI_Trend`.
 6. Removed obsolete notebook pages and Chat page; added slim chat pane in dashboard.
+7. Documentation refresh across memory_bank: overview, stack, system docs markdowns.
 
 ## In-Progress / Next
-* Documentation refresh (overview, stack, system docs).
 * CI pipeline & tests for `quality_checks` rules.
+* Local vector-store setup with ChromaDB for RAG indexing (P6).
 * Optional RAG vector index (stretch).
 
 ## Known Issues
-* Enrichment script is single-threaded – runtime ~ N×40 s; consider async batch.
+* Enrichment script is single-threaded – runtime ~ N×80 s; consider async batch.
 * Streamlit chat uses GPT-4o by default; can be slow without caching.
