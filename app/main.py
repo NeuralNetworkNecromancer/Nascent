@@ -6,10 +6,21 @@ import pandas as pd
 # Removed unused datetime/date import.
 import altair as alt
 
-from .utils.caching import load_data
-from .utils.config import get_config, set_config, DEFAULT_SEVERITIES
+try:
+    # Prefer absolute import when package is discoverable (Streamlit Cloud root).
+    from app.utils.caching import load_data  # type: ignore
+    from app.utils.config import (
+        get_config,  # type: ignore
+        set_config,
+        DEFAULT_SEVERITIES,
+    )
+    from app.services.vector_db import query as rag_query  # type: ignore
+except ImportError:  # Fallback to relative imports when run as "python app/main.py"
+    from .utils.caching import load_data
+    from .utils.config import get_config, set_config, DEFAULT_SEVERITIES
+    from .services.vector_db import query as rag_query
+
 from src import quality_checks as eu
-from .services.vector_db import query as rag_query
 from pathlib import Path
 
 DESCRIPTIONS = eu.DESCRIPTIONS
