@@ -4,6 +4,7 @@ import streamlit as st
 import pandas as pd
 import altair as alt
 from datetime import date
+# 'os' may still be used elsewhere; keep. Removed dotenv and openai import above.
 
 from app.utils.caching import load_data
 from app.utils.config import get_config, set_config, DEFAULT_SEVERITIES
@@ -299,42 +300,119 @@ sym_chart = (
     .properties(height=220)
 )
 
-# ---------------- Severity KPIs -----------------
+# ---------------- Layout: dashboard vs chat -----------------
 
-st.subheader("Severity flag counts (selected checks)")
-crit, maj, minr = st.columns(3)
-crit.metric("🔴 Critical", f"{int(flags_df['critical_flags'].sum()):,}")
-maj.metric("🟠 Major", f"{int(flags_df['major_flags'].sum()):,}")
-minr.metric("🟢 Minor", f"{int(flags_df['minor_flags'].sum()):,}")
+dash_col, chat_col = st.columns([4, 1], gap="large")
 
-# ---------------- Show charts together -----------------
+# ----- Left: Dashboard -----
+with dash_col:
+    # Severity KPIs
+    st.subheader("Severity flag counts (selected checks)")
+    crit, maj, minr = st.columns(3)
+    crit.metric("🔴 Critical", f"{int(flags_df['critical_flags'].sum()):,}")
+    maj.metric("🟠 Major", f"{int(flags_df['major_flags'].sum()):,}")
+    minr.metric("🟢 Minor", f"{int(flags_df['minor_flags'].sum()):,}")
 
-with st.expander("📈 Visualisations", expanded=True):
-    st.altair_chart(chart, use_container_width=True)
-    st.altair_chart(stack_chart, use_container_width=True)
-    st.altair_chart(sym_chart, use_container_width=True)
+    # Charts
+    with st.expander("📈 Visualisations", expanded=True):
+        st.altair_chart(chart, use_container_width=True)
+        st.altair_chart(stack_chart, use_container_width=True)
+        st.altair_chart(sym_chart, use_container_width=True)
 
-with st.expander("Flagged rows", expanded=False):
-    if flagged_rows.empty:
-        st.success("No rows failed the selected checks 🎉")
-    else:
-        st.subheader("Flagged rows")
-        st.write(f"Rows flagged: {len(flagged_rows):,}")
-        st.dataframe(flagged_rows)
-        # --- Download buttons ---
-        csv_flagged_rows = flagged_rows.to_csv(index=False).encode("utf-8")
-        csv_full_flags = df_flags.to_csv(index=False).encode("utf-8")
-        csv_cleaned = cleaned_df.to_csv(index=False).encode("utf-8")
+    # Flagged rows table & downloads
+    with st.expander("Flagged rows", expanded=False):
+        if flagged_rows.empty:
+            st.success("No rows failed the selected checks 🎉")
+        else:
+            st.subheader("Flagged rows")
+            st.write(f"Rows flagged: {len(flagged_rows):,}")
+            st.dataframe(flagged_rows)
 
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.download_button("📥 Download full data + flags", csv_full_flags, "full_data_with_flags.csv", "text/csv")
-        with col2:
-            st.download_button("🧹 Download cleaned data", csv_cleaned, "cleaned_data.csv", "text/csv")
-        with col3:
-            st.download_button("💾 Download flagged rows", csv_flagged_rows, "flagged_rows.csv", "text/csv")
+            csv_flagged_rows = flagged_rows.to_csv(index=False).encode("utf-8")
+            csv_full_flags = df_flags.to_csv(index=False).encode("utf-8")
+            csv_cleaned = cleaned_df.to_csv(index=False).encode("utf-8")
 
-st.subheader("Counts per selected check")
-cols = st.columns(min(4, len(selected)))
-for i, name in enumerate(selected):
-    cols[i % len(cols)].metric(label=name, value=f"{check_counts[name]:,}") 
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.download_button("📥 Full data + flags", csv_full_flags, "full_data_with_flags.csv", "text/csv")
+            with col2:
+                st.download_button("🧹 Cleaned data", csv_cleaned, "cleaned_data.csv", "text/csv")
+            with col3:
+                st.download_button("💾 Flagged rows", csv_flagged_rows, "flagged_rows.csv", "text/csv")
+
+    # Per-check metrics
+    st.subheader("Counts per selected check")
+    cols_metrics = st.columns(min(4, len(selected)))
+    for i, name in enumerate(selected):
+        cols_metrics[i % len(cols_metrics)].metric(label=name, value=f"{check_counts[name]:,}")
+
+# ----- Right: Chat -----
+with chat_col:
+    st.markdown("### 🤖 Chat")
+
+    # Inform if no API key
+    from app.constants import OPENAI_API_KEY
+    if not OPENAI_API_KEY:
+        st.info("Set OPENAI_API_KEY in .env to enable chatbot.")
+
+    import app.services.openai_service as oai
+
+    if "chat_msgs" not in st.session_state:
+        st.session_state.chat_msgs = [
+            {"role": "system", "content": "You are a helpful data quality assistant for futures datasets."}
+        ]
+
+    # --- Enrich button ---
+    if st.button("✨ AI Enrich Dataset"):
+        import app.services.openai_service as oai
+        if "enriched_df" not in st.session_state:
+            st.session_state.enriched_df = flagged_rows.copy()
+
+        progress = st.progress(0.0, text="Enriching flagged rows…")
+        results = []
+        total = len(flagged_rows)
+        for i, row in flagged_rows.iterrows():
+            check_cols = [c for c in selected if row[c]] if selected else []
+
+            # context last 7 days for same symbol
+            sym = row["Symbol"]
+            date_val = row["Date"]
+            context_df = df_view[(df_view["Symbol"]==sym) & (df_view["Date"]>=date_val-7) & (df_view["Date"]<=date_val)]
+            explanation = oai.ai_explain(row.to_dict(), context_df.to_dict(orient="records"), check_cols)
+            trend = oai.ai_trend(context_df.to_dict(orient="records"))
+            results.append({"explanation": explanation, "trend": trend})
+            progress.progress((len(results))/total)
+
+        st.session_state.enriched_df["AI_Explanation"] = [r["explanation"] for r in results]
+        st.session_state.enriched_df["AI_Trend"] = [r["trend"] for r in results]
+
+        # persist
+        import pathlib, os
+        out_path = pathlib.Path("app/data/processed")
+        out_path.mkdir(parents=True, exist_ok=True)
+        file_path = out_path/"enriched_dataset.csv"
+        st.session_state.enriched_df.to_csv(file_path, index=False)
+        st.success(f"Enrichment complete. Saved to {file_path}")
+
+    # --- Input on top ---
+    user_prompt = st.chat_input("Ask about the data or quality checks…")
+
+    if user_prompt:
+        st.session_state.chat_msgs.append({"role": "user", "content": user_prompt})
+        # Get assistant reply
+        if OPENAI_API_KEY:
+            with st.spinner("Thinking…"):
+                try:
+                    resp = oai.chat(st.session_state.chat_msgs)
+                    reply_content = resp.choices[0].message.content.strip()
+                except Exception as e:
+                    reply_content = f"Error: {e}"
+        else:
+            reply_content = "OpenAI key not set."
+
+        st.session_state.chat_msgs.append({"role": "assistant", "content": reply_content})
+
+    # --- Render history newest → oldest under the input ---
+    for m in reversed(st.session_state.chat_msgs[1:]):  # skip system
+        with st.chat_message(m["role"]):
+            st.markdown(m["content"]) 
