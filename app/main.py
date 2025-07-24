@@ -258,7 +258,8 @@ stack_chart = (
         y="rows:Q",
         color=alt.Color("sev:N", scale=alt.Scale(domain=list(sev_colors), range=list(sev_colors.values())), legend=None),
         tooltip=["Date_dt:T", "sev", "rows"]
-    ).properties(height=220)
+    )
+    .properties(height=220)
 )
 
 # ---------------- Symbol-level severity chart ----------------
@@ -291,6 +292,14 @@ sym_chart = (
     .properties(height=220)
 )
 
+# ---------------- Severity KPIs -----------------
+
+st.subheader("Severity flag counts (selected checks)")
+crit, maj, minr = st.columns(3)
+crit.metric("🔴 Critical", f"{int(flags_df['critical_flags'].sum()):,}")
+maj.metric("🟠 Major", f"{int(flags_df['major_flags'].sum()):,}")
+minr.metric("🟢 Minor", f"{int(flags_df['minor_flags'].sum()):,}")
+
 # ---------------- Show charts together -----------------
 
 with st.expander("📈 Visualisations", expanded=True):
@@ -312,17 +321,13 @@ with st.expander("Flagged rows", expanded=False):
 
         col1, col2, col3 = st.columns(3)
         with col1:
-            st.download_button("💾 Download flagged rows", csv_flagged_rows, "flagged_rows.csv", "text/csv")
-        with col2:
             st.download_button("📥 Download full data + flags", csv_full_flags, "full_data_with_flags.csv", "text/csv")
-        with col3:
+        with col2:
             st.download_button("🧹 Download cleaned data", csv_cleaned, "cleaned_data.csv", "text/csv")
+        with col3:
+            st.download_button("💾 Download flagged rows", csv_flagged_rows, "flagged_rows.csv", "text/csv")
 
 st.subheader("Counts per selected check")
 cols = st.columns(min(4, len(selected)))
 for i, name in enumerate(selected):
-    cols[i % len(cols)].metric(label=name, value=f"{check_counts[name]:,}")
-
-# Show severity counts summary
-st.subheader("Severity flag counts (for selected checks)")
-st.write({sev: int(flags_df[f"{sev}_flags"].sum()) for sev in ["critical", "major", "minor"]}) 
+    cols[i % len(cols)].metric(label=name, value=f"{check_counts[name]:,}") 
