@@ -196,6 +196,9 @@ df_flags = pd.concat([df_view, flags_df], axis=1)
 union_mask = flags_df.any(axis=1)
 flagged_rows = df_flags[union_mask].reset_index(drop=True)
 
+# Prepare cleaned dataset (rows WITHOUT any flagged alerts)
+cleaned_df = df_view.loc[~union_mask].reset_index(drop=True)
+
 # ------------ Plot -------------
 
 df_plot = df_view.copy()
@@ -234,10 +237,6 @@ chart = (
     .properties(height=300)
 )
 
-st.altair_chart(chart, use_container_width=True)
-
-# ---------- Additional Visualisations ----------
-
 # Stacked bar: count of rows per severity per day (for selected checks)
 
 count_df = (
@@ -262,42 +261,62 @@ stack_chart = (
     ).properties(height=220)
 )
 
-# Treemap-style horizontal bar per severity with symbol rectangles
+# ---------------- Symbol-level severity chart ----------------
 
-sym_df = (
-    df_flags[["Symbol", "critical_flags", "major_flags", "minor_flags"]]
-    .groupby("Symbol", as_index=False)
-    .agg(rows=("Symbol", "size"),
-         crit=("critical_flags", "sum"),
-         maj =("major_flags", "sum"),
-         min =("minor_flags", "sum"))
+# Compute counts of alerts per severity for each symbol
+symbol_count_df = (
+    df_flags.loc[:, ["Symbol"] + [f"{s}_flags" for s in ["critical", "major", "minor"]]]
+    .melt(id_vars="Symbol", value_vars=["critical_flags", "major_flags", "minor_flags"],
+          var_name="sev", value_name="flag")
+    .query("flag > 0")
+    .replace({"sev": {"critical_flags": "critical", "major_flags": "major", "minor_flags": "minor"}})
+    .groupby(["Symbol", "sev"], as_index=False)["flag"].size()
+    .rename(columns={"size": "rows"})
 )
 
-sym_df["worst"] = sym_df.apply(lambda r: "critical" if r.crit else ("major" if r.maj else ("minor" if r.min else "none")), axis=1)
-
-treemap = (
-    alt.Chart(sym_df)
-    .transform_window(row_number='row_number()')  # ensures stable ordering
+# Stacked bar per Symbol coloured by severity
+sym_chart = (
+    alt.Chart(symbol_count_df)
     .mark_bar()
     .encode(
-        y=alt.Y('worst:N', title='Worst severity', sort=['critical','major','minor','none']),
-        x=alt.X('rows:Q', title='Rows'),
-        color=alt.Color('worst:N', scale=alt.Scale(domain=list(sev_colors), range=list(sev_colors.values())), legend=None),
-        tooltip=["Symbol", "rows", "worst"]
-    ).properties(height=160)
+        x=alt.X("Symbol:N", title="Symbol", sort="-y"),
+        y=alt.Y("rows:Q", title="# Alerts"),
+        color=alt.Color(
+            "sev:N",
+            scale=alt.Scale(domain=list(sev_colors.keys()), range=list(sev_colors.values())),
+            legend=None,
+        ),
+        tooltip=["Symbol", "sev", "rows"],
+    )
+    .properties(height=220)
 )
 
-st.altair_chart(stack_chart, use_container_width=True)
-st.altair_chart(treemap, use_container_width=True)
+# ---------------- Show charts together -----------------
 
-st.subheader("Flagged rows")
-if flagged_rows.empty:
-    st.success("No rows failed the selected checks 🎉")
-else:
-    st.write(f"Rows flagged: {len(flagged_rows):,}")
-    st.dataframe(flagged_rows)
-    csv = flagged_rows.to_csv(index=False).encode("utf-8")
-    st.download_button("💾 Download flagged CSV", csv, "flagged_rows.csv", "text/csv")
+with st.expander("📈 Visualisations", expanded=True):
+    st.altair_chart(chart, use_container_width=True)
+    st.altair_chart(stack_chart, use_container_width=True)
+    st.altair_chart(sym_chart, use_container_width=True)
+
+with st.expander("Flagged rows", expanded=False):
+    if flagged_rows.empty:
+        st.success("No rows failed the selected checks 🎉")
+    else:
+        st.subheader("Flagged rows")
+        st.write(f"Rows flagged: {len(flagged_rows):,}")
+        st.dataframe(flagged_rows)
+        # --- Download buttons ---
+        csv_flagged_rows = flagged_rows.to_csv(index=False).encode("utf-8")
+        csv_full_flags = df_flags.to_csv(index=False).encode("utf-8")
+        csv_cleaned = cleaned_df.to_csv(index=False).encode("utf-8")
+
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.download_button("💾 Download flagged rows", csv_flagged_rows, "flagged_rows.csv", "text/csv")
+        with col2:
+            st.download_button("📥 Download full data + flags", csv_full_flags, "full_data_with_flags.csv", "text/csv")
+        with col3:
+            st.download_button("🧹 Download cleaned data", csv_cleaned, "cleaned_data.csv", "text/csv")
 
 st.subheader("Counts per selected check")
 cols = st.columns(min(4, len(selected)))
