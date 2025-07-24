@@ -1,5 +1,5 @@
 # Overview – Daily Futures DQ Prototype
-*Last updated: 2025‑07‑23*
+*Last updated: 2025-07-24*
 
 ## Purpose
 A reproducible, config‑driven pipeline that ingests the daily‑futures CSV, runs automated data‑quality checks, flags & cleans anomalies, and outputs human‑readable + machine‑usable diagnostics.
@@ -16,35 +16,35 @@ A reproducible, config‑driven pipeline that ingests the daily‑futures CSV, r
 * Row‑level explanations embedded & queryable in vector store demo.
 * CI passes on a fresh clone / Codespace in < 5 min.
 
-## Repository Layout
+## Repository Layout (actual)
 .
 ├── app/
 │   ├── __init__.py
-│   ├── main.py                # Streamlit landing page (home)
-│   ├── pages/                 # Multi-page reports
-│   │   ├── 1_Coverage_and_Duplicates.py
-│   │   ├── 2_OHLC_Integrity.py
-│   │   ├── 3_Flatlines_and_Stale.py
-│   │   └── 4_Outliers_and_Volume.py
-│   └── data/                    # small demo CSVs for Cloud (optional)
-│       ├── raw/                 # original futures_dataset.csv
-│       └──processed/            # cleaned & flagged outputs
+│   ├── main.py                  # single-page Streamlit dashboard
+│   ├── constants.py             # env-var helpers (OpenAI keys)
+│   ├── prompts/
+│   │   ├── row_enrich.md        # LLM prompt templates
+│   │   └── trend_enrich.md
+│   ├── utils/
+│   │   ├── __init__.py
+│   │   ├── caching.py           # st.cache wrapper
+│   │   └── config.py            # default slider values (currently minimal)
+│   ├── services/
+│   │   ├── __init__.py
+│   │   └── openai_service.py    # retry-wrapped OpenAI client
+│   └── data/
+│       ├── raw/                 # futures_dataset.csv (ignored in git)
+│       └── processed/
+│           ├── enriched_dataset.csv
+│           └── 1full_enriched_dataset.csv
+├── scripts/
+│   ├── merge_enriched.py        # join base + AI subset safely
+│   └── enrich_full_dataset.py   # batch GPT-3.5 enrichment CLI
 ├── src/
 │   ├── __init__.py
-│   ├── eda_utils.py           # reusable diagnostics
-│   ├── quality_checks.py      # rule implementations (TBD)
-│   └── agent_enrich.py        # row-level LLM enrichment (stub)
-├── tests/
-│   └── test_quality_checks.py
-├── data/
-│   └── raw/futures_dataset.csv   # full dataset (git-large-file or ignored in Cloud)
-├── dq_config.yml              # severity & threshold config
-├── docker-compose.yml         # local Qdrant service
-├── requirements.txt           # Python deps for app & src
-├── .pre-commit-config.yaml    # formatting hooks
-├── .gitignore
-├── README.md
-├── memory_bank/ …             # context & progress docs
-├── .cursor/
-│   └── rules/ (memory.mdc, plan.mdc, implement.mdc)
-└── streamlit_app.py           # thin launcher (imports app.main)
+│   └── quality_checks.py        # all data-quality rules & descriptions
+├── requirements.txt             # pandas, streamlit, openai, python-dotenv, tqdm…
+├── memory_bank/                 # plan / progress / stack / system docs (this folder)
+├── README.md                    # high-level intro
+├── .gitignore, .cursor/, .github/ …
+└── streamlit_app.py             # thin launcher (imports app.main)

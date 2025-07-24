@@ -4,7 +4,7 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
-from src.eda_utils import load_data as _load_data
+from src.quality_checks import load_data as _load_data
 
 
 @st.cache_data(show_spinner="Loading dataset...")

@@ -8,7 +8,7 @@ from datetime import date
 
 from app.utils.caching import load_data
 from app.utils.config import get_config, set_config, DEFAULT_SEVERITIES
-from src import eda_utils as eu
+from src import quality_checks as eu
 
 DESCRIPTIONS = eu.DESCRIPTIONS
 DEFAULT_SEVERITIES = DEFAULT_SEVERITIES
