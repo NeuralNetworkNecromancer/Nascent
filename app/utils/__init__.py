@@ -1,1 +1,1 @@
-"""Utility helpers for Streamlit app (caching, shared config).""" 
+"""Utility helpers for Streamlit app (caching, shared config)."""

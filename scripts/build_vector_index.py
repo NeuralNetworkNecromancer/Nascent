@@ -8,6 +8,7 @@ The script concatenates the `AI_Explanation` and `AI_Trend` columns to form the
 text that will be embedded. The entire row (as a dict) is stored as metadata so
 it can be surfaced later during retrieval-augmented generation (RAG).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -30,7 +31,9 @@ def chunked(iterable: List, size: int):
         yield iterable[i : i + size]
 
 
-def build_index(csv_path: Path, collection_name: str = "futures_rag", batch_size: int = 100):
+def build_index(
+    csv_path: Path, collection_name: str = "futures_rag", batch_size: int = 100
+):
     """Read *csv_path* and add its rows to the Chroma index.
 
     Parameters
@@ -58,22 +61,48 @@ def build_index(csv_path: Path, collection_name: str = "futures_rag", batch_size
     else:
         ids = [str(i) for i in range(len(df))]
 
-    logger.info("Indexing %d documents into collection '%s' (batch %d)", len(docs), collection_name, batch_size)
+    logger.info(
+        "Indexing %d documents into collection '%s' (batch %d)",
+        len(docs),
+        collection_name,
+        batch_size,
+    )
 
-    for doc_batch, meta_batch, id_batch in tqdm(zip(chunked(docs, batch_size), chunked(metadatas, batch_size), chunked(ids, batch_size))):
+    for doc_batch, meta_batch, id_batch in tqdm(
+        zip(
+            chunked(docs, batch_size),
+            chunked(metadatas, batch_size),
+            chunked(ids, batch_size),
+        )
+    ):
         try:
-            add_documents(doc_batch, meta_batch, id_batch, collection_name=collection_name)
+            add_documents(
+                doc_batch, meta_batch, id_batch, collection_name=collection_name
+            )
         except Exception as exc:
-            logger.error("Failed to add batch starting with id %s: %s", id_batch[0], exc)
+            logger.error(
+                "Failed to add batch starting with id %s: %s", id_batch[0], exc
+            )
 
     logger.info("Index build completed.")
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Build ChromaDB index from enriched dataset")
-    parser.add_argument("--csv", type=Path, default="app/data/processed/enriched_futures_data.csv", help="Path to enriched CSV")
-    parser.add_argument("--collection", default="futures_rag", help="Chroma collection name")
-    parser.add_argument("--batch", type=int, default=100, help="Batch size for embedding requests")
+    parser = argparse.ArgumentParser(
+        description="Build ChromaDB index from enriched dataset"
+    )
+    parser.add_argument(
+        "--csv",
+        type=Path,
+        default="app/data/processed/enriched_futures_data.csv",
+        help="Path to enriched CSV",
+    )
+    parser.add_argument(
+        "--collection", default="futures_rag", help="Chroma collection name"
+    )
+    parser.add_argument(
+        "--batch", type=int, default=100, help="Batch size for embedding requests"
+    )
     args = parser.parse_args()
 
-    build_index(args.csv, collection_name=args.collection, batch_size=args.batch) 
+    build_index(args.csv, collection_name=args.collection, batch_size=args.batch)

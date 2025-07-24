@@ -5,6 +5,7 @@ python-dotenv>=1.0
 openai
 black
 isort
+flake8
 pytest
 nbstripout 
 seaborn

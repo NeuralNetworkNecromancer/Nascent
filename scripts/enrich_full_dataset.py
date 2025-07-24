@@ -10,6 +10,7 @@ Usage (defaults shown):
         --input app/data/raw/futures_dataset.csv \
         --out   app/data/processed/enriched_full_by_ai.csv
 """
+
 from __future__ import annotations
 
 import argparse
@@ -41,8 +42,7 @@ def explain_row(row: pd.Series, context_rows: pd.DataFrame) -> tuple[str, str]:
     ctx_records = context_rows.to_dict(orient="records")
     row_dict = row.to_dict()
     prompt_explain = (
-        ROW_PROMPT
-        .replace("{{row}}", str(row_dict))
+        ROW_PROMPT.replace("{{row}}", str(row_dict))
         .replace("{{checks}}", "auto")
         .replace("{{context}}", str(ctx_records))
     )
@@ -100,9 +100,15 @@ def main(input_path: Path, out_path: Path, batch_size: int = 100):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--input", type=Path, default=Path("app/data/raw/futures_dataset.csv"))
-    parser.add_argument("--out", type=Path, default=Path("app/data/processed/enriched_full_by_ai.csv"))
-    parser.add_argument("--batch", type=int, default=100, help="Flush buffer every N rows")
+    parser.add_argument(
+        "--input", type=Path, default=Path("app/data/raw/futures_dataset.csv")
+    )
+    parser.add_argument(
+        "--out", type=Path, default=Path("app/data/processed/enriched_full_by_ai.csv")
+    )
+    parser.add_argument(
+        "--batch", type=int, default=100, help="Flush buffer every N rows"
+    )
     args = parser.parse_args()
 
-    main(args.input, args.out, args.batch) 
+    main(args.input, args.out, args.batch)

@@ -6,6 +6,7 @@ import without having to know any Chroma-specific APIs. Embeddings are generated
 via the existing OpenAI service wrapper so we maintain a single place for retry
 logic and authentication.
 """
+
 from __future__ import annotations
 
 import logging
@@ -32,6 +33,7 @@ class OpenAIEmbeddingFunction(EmbeddingFunction):
 # Client helpers
 # ---------------------------------------------------------------------------
 
+
 def get_client() -> chromadb.PersistentClient:
     """Return a (cached) persistent Chroma client bound to CHROMA_PATH."""
     # We intentionally create a new client on every call – chromadb is lightweight
@@ -53,6 +55,7 @@ def get_collection(name: str = "futures_rag") -> chromadb.Collection:
 # CRUD helpers
 # ---------------------------------------------------------------------------
 
+
 def add_documents(
     texts: List[str],
     metadatas: List[dict] | None = None,
@@ -62,11 +65,14 @@ def add_documents(
 ) -> None:
     """Add documents with optional metadata/ids to the specified collection."""
     collection = get_collection(collection_name)
-    logger.info("Adding %d documents to Chroma collection '%s'", len(texts), collection_name)
+    logger.info(
+        "Adding %d documents to Chroma collection '%s'", len(texts), collection_name
+    )
     collection.add(
         documents=texts,
         metadatas=metadatas or [{} for _ in texts],
-        ids=ids or [str(i) for i in range(collection.count(), collection.count() + len(texts))],
+        ids=ids
+        or [str(i) for i in range(collection.count(), collection.count() + len(texts))],
     )
 
 
@@ -77,7 +83,9 @@ def query(
     collection_name: str = "futures_rag",
 ):
     """Query the vector store and return the matching documents and metadata."""
-    logger.debug("Querying Chroma with %d text(s) (top %d results)", len(texts), n_results)
+    logger.debug(
+        "Querying Chroma with %d text(s) (top %d results)", len(texts), n_results
+    )
     collection = get_collection(collection_name)
     return collection.query(query_texts=texts, n_results=n_results)
 
@@ -92,8 +100,10 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Quick ad-hoc Chroma queries")
     parser.add_argument("--text", required=True, help="Query text")
-    parser.add_argument("--top", type=int, default=5, help="Number of results to return")
+    parser.add_argument(
+        "--top", type=int, default=5, help="Number of results to return"
+    )
     args = parser.parse_args()
 
     results = query([args.text], n_results=args.top)
-    print("Results:", results) 
+    print("Results:", results)

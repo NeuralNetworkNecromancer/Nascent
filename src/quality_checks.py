@@ -30,6 +30,7 @@ DEFAULT_LOCATIONS = [
     Path("app/data/raw/futures_dataset.csv"),
 ]
 
+
 def load_data(csv_path: str | Path | None = None) -> pd.DataFrame:
     """Load dataset from *csv_path* or the default raw data location.
 
@@ -60,16 +61,20 @@ def load_data(csv_path: str | Path | None = None) -> pd.DataFrame:
 
     raise FileNotFoundError("futures_dataset.csv not found in default locations.")
 
+
 # ---------------------------------------------------------------------------
 # Validation helpers
 # ---------------------------------------------------------------------------
 
 # === Coverage & duplicates ===
 
+
 def symbol_coverage(df: pd.DataFrame) -> pd.DataFrame:
     """Return per-date count of unique symbols."""
     return (
-        df.groupby("Date", as_index=False)["Symbol"].nunique().rename(columns={"Symbol": "symbol_count"})
+        df.groupby("Date", as_index=False)["Symbol"]
+        .nunique()
+        .rename(columns={"Symbol": "symbol_count"})
     )
 
 
@@ -78,32 +83,38 @@ def duplicated_rows(df: pd.DataFrame) -> pd.DataFrame:
     mask = df.duplicated(subset=["Date", "Symbol"], keep=False)
     return df.loc[mask].copy()
 
+
 # === OHLC integrity ===
+
 
 def ohlc_integrity_violations(df: pd.DataFrame) -> pd.DataFrame:
     """Flag rows where OHLC logical relationships are violated."""
     violations = df[
-        (df["Low"] > df["High"]) |
-        (df["Close"] > df["High"]) |
-        (df["Close"] < df["Low"]) |
-        (df["Open"] > df["High"]) |
-        (df["Open"] < df["Low"])
+        (df["Low"] > df["High"])
+        | (df["Close"] > df["High"])
+        | (df["Close"] < df["Low"])
+        | (df["Open"] > df["High"])
+        | (df["Open"] < df["Low"])
     ].copy()
     return violations
 
+
 # === Flatlines ===
+
 
 def flatline_rows(df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Return two DataFrames: (volume == 0, volume > 0) where OHLC are identical."""
     flat_mask = (
-        (df["Open"] == df["High"]) &
-        (df["Open"] == df["Low"]) &
-        (df["Open"] == df["Close"])
+        (df["Open"] == df["High"])
+        & (df["Open"] == df["Low"])
+        & (df["Open"] == df["Close"])
     )
     flat = df[flat_mask].copy()
     return flat[flat["Volume"] == 0], flat[flat["Volume"] > 0]
 
+
 # --- New flat price helpers ---
+
 
 def stagnant_price(df: pd.DataFrame) -> pd.DataFrame:
     """Flat price rows where Volume == 0 (likely non-trading day)."""
@@ -115,7 +126,9 @@ def flat_price_anomaly(df: pd.DataFrame, min_volume: int = 1) -> pd.DataFrame:
     vol_rows = flatline_rows(df)[1]
     return vol_rows[vol_rows["Volume"] >= min_volume]
 
+
 # === Missing dates ===
+
 
 def missing_dates(df: pd.DataFrame) -> pd.DataFrame:
     """Return rows representing (Symbol, Date) combinations that are missing.
@@ -134,13 +147,17 @@ def missing_dates(df: pd.DataFrame) -> pd.DataFrame:
 
     return pd.DataFrame(records)
 
+
 # === High < Low inversion ===
+
 
 def high_low_inversion(df: pd.DataFrame) -> pd.DataFrame:
     """Rows where High < Low (explicit inversion check)."""
     return df[df["High"] < df["Low"]].copy()
 
+
 # === Negative numeric ===
+
 
 def negative_numeric(df: pd.DataFrame) -> pd.DataFrame:
     """Rows where any numeric field is negative."""
@@ -148,7 +165,9 @@ def negative_numeric(df: pd.DataFrame) -> pd.DataFrame:
     mask = (df[numeric_cols] < 0).any(axis=1)
     return df[mask].copy()
 
+
 # === Outliers ===
+
 
 def pct_change_outliers(df: pd.DataFrame, threshold: float = 0.5) -> pd.DataFrame:
     """Flag rows where absolute day-over-day close change exceeds *threshold* (50 % default)."""
@@ -170,14 +189,20 @@ def iqr_price_outliers(df: pd.DataFrame, multiplier: float = 3.0) -> pd.DataFram
         outlier_rows.append(grp[(grp["Close"] < lower) | (grp["Close"] > upper)])
     return pd.concat(outlier_rows) if outlier_rows else pd.DataFrame(columns=df.columns)
 
+
 # === Volume anomalies ===
 
-def volume_anomalies(df: pd.DataFrame, factor: float = 10.0) -> Tuple[pd.DataFrame, pd.DataFrame]:
+
+def volume_anomalies(
+    df: pd.DataFrame, factor: float = 10.0
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Return (zero_volume_price_moved, extreme_volume_rows)."""
     df_sorted = df.sort_values(["Symbol", "Date"]).copy()
     df_sorted["close_diff"] = df_sorted.groupby("Symbol")["Close"].diff().abs()
 
-    zero_vol_price_move = df_sorted[(df_sorted["Volume"] == 0) & (df_sorted["close_diff"] > 0)]
+    zero_vol_price_move = df_sorted[
+        (df_sorted["Volume"] == 0) & (df_sorted["close_diff"] > 0)
+    ]
 
     extreme_volume_rows = []
     for symbol, grp in df.groupby("Symbol"):
@@ -189,10 +214,13 @@ def volume_anomalies(df: pd.DataFrame, factor: float = 10.0) -> Tuple[pd.DataFra
         threshold = median_vol * factor
         extreme_volume_rows.append(grp[grp["Volume"] > threshold])
     extreme_volume_rows_df = (
-        pd.concat(extreme_volume_rows) if extreme_volume_rows else pd.DataFrame(columns=df.columns)
+        pd.concat(extreme_volume_rows)
+        if extreme_volume_rows
+        else pd.DataFrame(columns=df.columns)
     )
 
     return zero_vol_price_move, extreme_volume_rows_df
+
 
 # === Schema check ===
 
@@ -216,14 +244,30 @@ def check_schema(df: pd.DataFrame) -> pd.DataFrame:
     issues = []
     for col, dtype in EXPECTED_COLUMNS.items():
         if col not in df.columns:
-            issues.append({"field": col, "expected": dtype, "found": "<missing>", "note": "column missing"})
+            issues.append(
+                {
+                    "field": col,
+                    "expected": dtype,
+                    "found": "<missing>",
+                    "note": "column missing",
+                }
+            )
         else:
             found = str(df[col].dtype)
             if found != dtype:
-                issues.append({"field": col, "expected": dtype, "found": found, "note": "dtype mismatch"})
+                issues.append(
+                    {
+                        "field": col,
+                        "expected": dtype,
+                        "found": found,
+                        "note": "dtype mismatch",
+                    }
+                )
     return pd.DataFrame(issues)
 
+
 # === Open interest check ===
+
 
 def check_oi(df: pd.DataFrame, spike_factor: float = 10.0) -> pd.DataFrame:
     """Flag rows where Open Interest is negative or extreme spike (>factor×median)."""
@@ -233,6 +277,7 @@ def check_oi(df: pd.DataFrame, spike_factor: float = 10.0) -> pd.DataFrame:
     median = oi_series.median() if not oi_series.empty else 0
     mask = (oi_series < 0) | (oi_series > median * spike_factor)
     return df[mask].copy()
+
 
 # ---------------------------------------------------------------------------
 # Registry – descriptions, severities, function mapping
@@ -256,7 +301,7 @@ DESCRIPTIONS: Dict[str, str] = {
 
 DEFAULT_SEVERITIES: Dict[str, str] = {
     "Duplicate row": "major",
-    "Missing date": "major",
+    "Missing date": "minor",
     "OHLC range violation": "critical",
     "Stagnant price": "major",
     "Flat price anomaly": "minor",
@@ -310,4 +355,4 @@ __all__ = [
     "DESCRIPTIONS",
     "DEFAULT_SEVERITIES",
     "CHECK_FUNCTIONS",
-] 
+]

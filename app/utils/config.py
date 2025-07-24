@@ -15,8 +15,8 @@ from src.quality_checks import DEFAULT_SEVERITIES  # re-exported below
 
 _DEFAULTS: Dict[str, float] = {
     "volume_factor": 10.0,
-    "pct_change_threshold": 0.5,  # 50 %
-    "iqr_multiplier": 3.0,
+    "pct_change_threshold": 0.05,
+    "iqr_multiplier": 1.0,
     "flat_price_min_volume": 1,
 }
 

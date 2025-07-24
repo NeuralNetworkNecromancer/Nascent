@@ -3,6 +3,7 @@ Recompute all quality-check flags and severity aggregates for a CSV (e.g. enrich
 Adds boolean flag columns per check plus critical_flags / major_flags / minor_flags counts.
 Saves output with *_with_flags.csv suffix or path passed by --out.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -33,7 +34,11 @@ def compute_flags(df: pd.DataFrame) -> pd.DataFrame:
 
     # aggregate per severity
     for sev in ["critical", "major", "minor"]:
-        checks_sev = [n for n, s in qc.DEFAULT_SEVERITIES.items() if s == sev and n in flags_df.columns]
+        checks_sev = [
+            n
+            for n, s in qc.DEFAULT_SEVERITIES.items()
+            if s == sev and n in flags_df.columns
+        ]
         flags_df[f"{sev}_flags"] = flags_df[checks_sev].sum(axis=1).astype(int)
 
     return pd.concat([df, flags_df], axis=1)
@@ -54,8 +59,10 @@ def main(inp: Path, out: Path | None):
 
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
-    p.add_argument("--input", type=Path, default=Path("app/data/processed/enriched_full_by_ai.csv"))
+    p.add_argument(
+        "--input", type=Path, default=Path("app/data/processed/enriched_full_by_ai.csv")
+    )
     p.add_argument("--out", type=Path, default=None, help="Output CSV path")
     args = p.parse_args()
 
-    main(args.input, args.out) 
+    main(args.input, args.out)

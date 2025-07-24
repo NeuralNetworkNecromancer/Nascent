@@ -2,9 +2,9 @@
 
 import streamlit as st
 import pandas as pd
+
+# Removed unused datetime/date import.
 import altair as alt
-from datetime import date
-# 'os' may still be used elsewhere; keep. Removed dotenv and openai import above.
 
 from app.utils.caching import load_data
 from app.utils.config import get_config, set_config, DEFAULT_SEVERITIES
@@ -25,7 +25,10 @@ st.set_page_config(page_title="Daily Futures – DQ Dashboard", layout="wide")
 
 with st.sidebar:
     st.header("1️⃣ Load dataset")
-    uploaded = st.file_uploader("CSV with columns Date, Symbol, Open, High, Low, Close, Volume, Open Interest", type="csv")
+    uploaded = st.file_uploader(
+        "CSV with columns Date, Symbol, Open, High, Low, Close, Volume, Open Interest",
+        type="csv",
+    )
     if uploaded is not None:
         st.session_state["data"] = load_data(uploaded)
         st.success("Dataset uploaded.")
@@ -64,7 +67,9 @@ with st.sidebar:
     st.header("2️⃣ Plot dimension")
 
     dim_options = ["Open", "High", "Low", "Close", "Volume", "Open Interest"]
-    plot_dimension = st.selectbox("Select field for plot", dim_options, index=dim_options.index("Volume"))
+    plot_dimension = st.selectbox(
+        "Select field for plot", dim_options, index=dim_options.index("Volume")
+    )
 
     st.divider()
     st.header("3️⃣ Configuration")
@@ -120,7 +125,13 @@ with st.sidebar:
 
     sev_opts = ["critical", "major", "minor"]
     for check, default_sev in DEFAULT_SEVERITIES.items():
-        sel = st.selectbox(check, sev_opts, index=sev_opts.index(st.session_state["severity_map"].get(check, default_sev)))
+        sel = st.selectbox(
+            check,
+            sev_opts,
+            index=sev_opts.index(
+                st.session_state["severity_map"].get(check, default_sev)
+            ),
+        )
         st.session_state["severity_map"][check] = sel
 
 # -----------------------------------------------------------------------------
@@ -153,9 +164,11 @@ severity_map = st.session_state["severity_map"]
 emoji_map = {"critical": "🔴", "major": "🟠", "minor": "🟢"}
 
 total_counts: dict[str, int] = {}
-severity_masks = {"critical": pd.Series(False, index=df_view.index),
-                  "major": pd.Series(False, index=df_view.index),
-                  "minor": pd.Series(False, index=df_view.index)}
+severity_masks = {
+    "critical": pd.Series(False, index=df_view.index),
+    "major": pd.Series(False, index=df_view.index),
+    "minor": pd.Series(False, index=df_view.index),
+}
 
 # Build parameter-aware wrappers matching earlier config
 param_wrappers = {
@@ -167,7 +180,9 @@ param_wrappers = {
     "Zero-volume with move": lambda d: eu.volume_anomalies(d, factor=vol_factor)[0],
     "Extreme volume outlier": lambda d: eu.volume_anomalies(d, factor=vol_factor)[1],
     "Day-over-day jump": lambda d: eu.pct_change_outliers(d, threshold=pct_thresh),
-    "Absolute price bounds (IQR)": lambda d: eu.iqr_price_outliers(d, multiplier=iqr_mult),
+    "Absolute price bounds (IQR)": lambda d: eu.iqr_price_outliers(
+        d, multiplier=iqr_mult
+    ),
     "High < Low inversion": CHECK_FUNCTIONS["High < Low inversion"],
     "Negative numeric": CHECK_FUNCTIONS["Negative numeric"],
     "Schema": CHECK_FUNCTIONS["Schema"],
@@ -186,10 +201,16 @@ with st.expander("Quality checks overview", expanded=False):
         for k in names:
             v = descriptions[k]
             count = total_counts.get(k, 0)
-            st.markdown(f"{emoji_map[sev_key]} **{k}** – {v} (_{sev_key}_, {count:,} rows)")
+            st.markdown(
+                f"{emoji_map[sev_key]} **{k}** – {v} (_{sev_key}_, {count:,} rows)"
+            )
 
 # --------- Select checks to run ---------
-selected = st.multiselect("Select quality checks to run", list(param_wrappers.keys()), default=list(param_wrappers.keys()))
+selected = st.multiselect(
+    "Select quality checks to run",
+    list(param_wrappers.keys()),
+    default=list(param_wrappers.keys()),
+)
 
 # Compute boolean columns for selected checks
 flag_columns = {}
@@ -230,13 +251,16 @@ cleaned_df = df_view.loc[~union_mask].reset_index(drop=True)
 
 # Build plotting df and ensure flag columns unique
 df_plot = df_view.copy()
-df_plot["Date_dt"] = pd.to_datetime(df_plot["Date"].astype(str), format="%Y%m%d", errors="coerce")
+df_plot["Date_dt"] = pd.to_datetime(
+    df_plot["Date"].astype(str), format="%Y%m%d", errors="coerce"
+)
 
 # Add flag columns if not already present (avoid duplicate join error)
 cols_flags = ["critical_flags", "major_flags", "minor_flags"]
 missing_cols = [c for c in cols_flags if c not in df_plot.columns]
 if missing_cols:
     df_plot = df_plot.join(df_flags[missing_cols])
+
 
 # Helper to classify highest severity for plotting
 def _sev_level(row):
@@ -248,11 +272,19 @@ def _sev_level(row):
         return "minor"
     return "none"
 
+
 df_plot["sev_level"] = df_plot.apply(_sev_level, axis=1)
 
-sev_colors = {"critical": "#d62728", "major": "#ff7f0e", "minor": "#2ca02c", "none": "#1f77b4"}
+sev_colors = {
+    "critical": "#d62728",
+    "major": "#ff7f0e",
+    "minor": "#2ca02c",
+    "none": "#1f77b4",
+}
 
-agg_df = df_plot.groupby(["Date_dt", "sev_level"], as_index=False)[plot_dimension].mean()
+agg_df = df_plot.groupby(["Date_dt", "sev_level"], as_index=False)[
+    plot_dimension
+].mean()
 
 chart = (
     alt.Chart(agg_df)
@@ -262,7 +294,9 @@ chart = (
         y=alt.Y(f"{plot_dimension}:Q", title=plot_dimension),
         color=alt.Color(
             "sev_level:N",
-            scale=alt.Scale(domain=list(sev_colors.keys()), range=list(sev_colors.values())),
+            scale=alt.Scale(
+                domain=list(sev_colors.keys()), range=list(sev_colors.values())
+            ),
             legend=None,
         ),
         tooltip=["Date_dt:T", plot_dimension, "sev_level"],
@@ -274,12 +308,29 @@ chart = (
 
 count_df = (
     df_flags.loc[:, ["Date"] + [f"{s}_flags" for s in ["critical", "major", "minor"]]]
-    .assign(Date_dt=lambda d: pd.to_datetime(d["Date"].astype(str), format="%Y%m%d", errors="coerce"))
-    .melt(id_vars="Date_dt", value_vars=["critical_flags", "major_flags", "minor_flags"],
-          var_name="sev", value_name="flag")
+    .assign(
+        Date_dt=lambda d: pd.to_datetime(
+            d["Date"].astype(str), format="%Y%m%d", errors="coerce"
+        )
+    )
+    .melt(
+        id_vars="Date_dt",
+        value_vars=["critical_flags", "major_flags", "minor_flags"],
+        var_name="sev",
+        value_name="flag",
+    )
     .query("flag > 0")
-    .replace({"sev": {"critical_flags": "critical", "major_flags": "major", "minor_flags": "minor"}})
-    .groupby(["Date_dt", "sev"], as_index=False)["flag"].size()
+    .replace(
+        {
+            "sev": {
+                "critical_flags": "critical",
+                "major_flags": "major",
+                "minor_flags": "minor",
+            }
+        }
+    )
+    .groupby(["Date_dt", "sev"], as_index=False)["flag"]
+    .size()
     .rename(columns={"size": "rows"})
 )
 
@@ -287,10 +338,14 @@ stack_chart = (
     alt.Chart(count_df)
     .mark_bar()
     .encode(
-        x="Date_dt:T",
-        y="rows:Q",
-        color=alt.Color("sev:N", scale=alt.Scale(domain=list(sev_colors), range=list(sev_colors.values())), legend=None),
-        tooltip=["Date_dt:T", "sev", "rows"]
+        x=alt.X("Date_dt:T", title="Date"),
+        y=alt.Y("rows:Q", title="# Alerts"),
+        color=alt.Color(
+            "sev:N",
+            scale=alt.Scale(domain=list(sev_colors), range=list(sev_colors.values())),
+            legend=None,
+        ),
+        tooltip=["Date_dt:T", "sev", "rows"],
     )
     .properties(height=220)
 )
@@ -300,11 +355,24 @@ stack_chart = (
 # Compute counts of alerts per severity for each symbol
 symbol_count_df = (
     df_flags.loc[:, ["Symbol"] + [f"{s}_flags" for s in ["critical", "major", "minor"]]]
-    .melt(id_vars="Symbol", value_vars=["critical_flags", "major_flags", "minor_flags"],
-          var_name="sev", value_name="flag")
+    .melt(
+        id_vars="Symbol",
+        value_vars=["critical_flags", "major_flags", "minor_flags"],
+        var_name="sev",
+        value_name="flag",
+    )
     .query("flag > 0")
-    .replace({"sev": {"critical_flags": "critical", "major_flags": "major", "minor_flags": "minor"}})
-    .groupby(["Symbol", "sev"], as_index=False)["flag"].size()
+    .replace(
+        {
+            "sev": {
+                "critical_flags": "critical",
+                "major_flags": "major",
+                "minor_flags": "minor",
+            }
+        }
+    )
+    .groupby(["Symbol", "sev"], as_index=False)["flag"]
+    .size()
     .rename(columns={"size": "rows"})
 )
 
@@ -317,7 +385,9 @@ sym_chart = (
         y=alt.Y("rows:Q", title="# Alerts"),
         color=alt.Color(
             "sev:N",
-            scale=alt.Scale(domain=list(sev_colors.keys()), range=list(sev_colors.values())),
+            scale=alt.Scale(
+                domain=list(sev_colors.keys()), range=list(sev_colors.values())
+            ),
             legend=None,
         ),
         tooltip=["Symbol", "sev", "rows"],
@@ -352,10 +422,12 @@ with dash_col:
             st.subheader("Flagged rows")
             st.write(f"Rows flagged: {len(flagged_rows):,}")
             _df = flagged_rows.copy()
-            for col in ["AI_Explanation","AI_Trend"]:
+            for col in ["AI_Explanation", "AI_Trend"]:
                 if col not in _df.columns:
                     _df[col] = ""
-            ordered = [c for c in _df.columns if c not in ("AI_Explanation","AI_Trend")] + ["AI_Explanation","AI_Trend"]
+            ordered = [
+                c for c in _df.columns if c not in ("AI_Explanation", "AI_Trend")
+            ] + ["AI_Explanation", "AI_Trend"]
             st.dataframe(_df[ordered])
 
             csv_flagged_rows = flagged_rows.to_csv(index=False).encode("utf-8")
@@ -364,17 +436,28 @@ with dash_col:
 
             col1, col2, col3 = st.columns(3)
             with col1:
-                st.download_button("📥 Full data + flags", csv_full_flags, "full_data_with_flags.csv", "text/csv")
+                st.download_button(
+                    "📥 Full data + flags",
+                    csv_full_flags,
+                    "full_data_with_flags.csv",
+                    "text/csv",
+                )
             with col2:
-                st.download_button("🧹 Cleaned data", csv_cleaned, "cleaned_data.csv", "text/csv")
+                st.download_button(
+                    "🧹 Cleaned data", csv_cleaned, "cleaned_data.csv", "text/csv"
+                )
             with col3:
-                st.download_button("💾 Flagged rows", csv_flagged_rows, "flagged_rows.csv", "text/csv")
+                st.download_button(
+                    "💾 Flagged rows", csv_flagged_rows, "flagged_rows.csv", "text/csv"
+                )
 
     # Per-check metrics
     st.subheader("Counts per selected check")
     cols_metrics = st.columns(min(4, len(selected)))
     for i, name in enumerate(selected):
-        cols_metrics[i % len(cols_metrics)].metric(label=name, value=f"{check_counts[name]:,}")
+        cols_metrics[i % len(cols_metrics)].metric(
+            label=name, value=f"{check_counts[name]:,}"
+        )
 
 # ----- Right: Chat -----
 with chat_col:
@@ -382,6 +465,7 @@ with chat_col:
 
     # Inform if no API key
     from app.constants import OPENAI_API_KEY
+
     if not OPENAI_API_KEY:
         st.info("Set OPENAI_API_KEY in .env to enable chatbot.")
 
@@ -389,7 +473,10 @@ with chat_col:
 
     if "chat_msgs" not in st.session_state:
         st.session_state.chat_msgs = [
-            {"role": "system", "content": "You are a helpful data quality assistant for futures datasets."}
+            {
+                "role": "system",
+                "content": "You are a helpful data quality assistant for futures datasets.",
+            }
         ]
 
     # (AI Enrich button removed; enrichment should be run offline script)
@@ -413,6 +500,7 @@ with chat_col:
         ctx_lines = []
         src_refs = []
         import json, copy
+
         for m, dist in zip(metas, dists):
             symbol = m.get("Symbol", "?")
             date = m.get("Date", "?")
@@ -420,7 +508,11 @@ with chat_col:
             row_plus = copy.deepcopy(m)
             row_plus["similarity"] = round(score, 4) if score is not None else None
             ctx_lines.append(json.dumps(row_plus, default=str, indent=2))
-            src_refs.append(f"{symbol} {date} – {score:.2f}" if score is not None else f"{symbol} {date}")
+            src_refs.append(
+                f"{symbol} {date} – {score:.2f}"
+                if score is not None
+                else f"{symbol} {date}"
+            )
         context_text = "\n".join(ctx_lines)
 
         # Assemble message list with ephemeral context via external template
@@ -470,4 +562,4 @@ with chat_col:
     # --- Render history newest → oldest under the input ---
     for m in reversed(st.session_state.chat_msgs[1:]):  # skip system
         with st.chat_message(m["role"]):
-            st.markdown(m["content"]) 
+            st.markdown(m["content"])

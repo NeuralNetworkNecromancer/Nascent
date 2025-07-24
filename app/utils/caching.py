@@ -17,7 +17,9 @@ def load_data(path: str | Path | None = None) -> pd.DataFrame:
     try:
         return _load_data(path)
     except FileNotFoundError as exc:
-        st.warning("Dataset not found – using empty DataFrame. Upload a CSV via sidebar or place data/raw/futures_dataset.csv.")
+        st.warning(
+            "Dataset not found – using empty DataFrame. Upload a CSV via sidebar or place data/raw/futures_dataset.csv."
+        )
         import pandas as pd
 
-        return pd.DataFrame() 
+        return pd.DataFrame()

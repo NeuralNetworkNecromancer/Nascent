@@ -11,6 +11,7 @@ Usage (from project root):
 
 If no arguments are provided, the defaults above are used.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -37,8 +38,12 @@ def merge(base_path: Path, enriched_path: Path, out_path: Path) -> None:
 
     # Collapse duplicates into a single row per (Date, Symbol)
     if enrich_df.duplicated(subset=["Date", "Symbol"]).any():
-        text_cols = [c for c in ["AI_Explanation", "AI_Trend"] if c in enrich_df.columns]
-        agg: dict[str, str] = {col: "last" for col in enrich_df.columns if col not in ["Date", "Symbol"]}
+        text_cols = [
+            c for c in ["AI_Explanation", "AI_Trend"] if c in enrich_df.columns
+        ]
+        agg: dict[str, str] = {
+            col: "last" for col in enrich_df.columns if col not in ["Date", "Symbol"]
+        }
         for col in text_cols:
             agg[col] = lambda s: " | ".join(s.dropna().unique())
 
@@ -64,10 +69,19 @@ def merge(base_path: Path, enriched_path: Path, out_path: Path) -> None:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Merge enriched subset with full dataset.")
-    parser.add_argument("--base", type=Path, default=DEFAULT_BASE, help="Path to full base dataset CSV")
-    parser.add_argument("--enriched", type=Path, default=DEFAULT_ENRICHED, help="Path to enriched subset CSV")
+    parser = argparse.ArgumentParser(
+        description="Merge enriched subset with full dataset."
+    )
+    parser.add_argument(
+        "--base", type=Path, default=DEFAULT_BASE, help="Path to full base dataset CSV"
+    )
+    parser.add_argument(
+        "--enriched",
+        type=Path,
+        default=DEFAULT_ENRICHED,
+        help="Path to enriched subset CSV",
+    )
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT, help="Output CSV path")
     args = parser.parse_args()
 
-    merge(args.base, args.enriched, args.out) 
+    merge(args.base, args.enriched, args.out)

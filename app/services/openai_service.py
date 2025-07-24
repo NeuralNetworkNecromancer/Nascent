@@ -2,6 +2,7 @@
 Purpose: Central gateway for OpenAI chat & embeddings.
 Provides convenience wrappers with automatic retry/back-off.
 """
+
 from __future__ import annotations
 
 import logging
@@ -18,6 +19,7 @@ logger = logging.getLogger(__name__)
 client = OpenAI(api_key=OPENAI_API_KEY)
 
 # ---------------- Helpers ----------------
+
 
 @retry(wait=wait_exponential(min=1, max=20), stop=stop_after_attempt(3))
 def chat(messages: List[dict], tools: list | None = None, stream: bool = False):
@@ -66,10 +68,10 @@ def complete(prompt: str, model: str = "gpt-4o") -> str:
 def ai_explain(row: dict, context: list[dict], checks: list[str]) -> str:
     """Return one-sentence explanation for a flagged row covering all failed checks."""
     from pathlib import Path
+
     prompt_tpl = Path("app/prompts/row_enrich.md").read_text()
     prompt = (
-        prompt_tpl
-        .replace("{{row}}", str(row))
+        prompt_tpl.replace("{{row}}", str(row))
         .replace("{{checks}}", ", ".join(checks))
         .replace("{{context}}", str(context))
     )
@@ -81,6 +83,7 @@ def ai_explain(row: dict, context: list[dict], checks: list[str]) -> str:
 def ai_trend(context: list[dict]) -> str:
     """Return one-sentence trend summary for 7-day context."""
     from pathlib import Path
+
     prompt_tpl = Path("app/prompts/trend_enrich.md").read_text()
     prompt = prompt_tpl.replace("{{context}}", str(context))
-    return complete(prompt, model=OPENAI_MODEL) 
+    return complete(prompt, model=OPENAI_MODEL)

@@ -1,1 +1,1 @@
-"""app package for Streamlit dashboard.""" 
+"""app package for Streamlit dashboard."""

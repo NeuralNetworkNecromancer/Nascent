@@ -10,7 +10,7 @@ This document is the **single source of truth** for how our Daily Futures protot
 
 All validation logic lives in `src/quality_checks.py`.  Each rule is a **pure function** that accepts a `pd.DataFrame` and returns a *filtered* DataFrame of offending rows.  A registry (`CHECK_FUNCTIONS`) maps human-readable names → callables so the UI & batch scripts can enumerate checks dynamically.
 
-### Public API
+### Public
 | Function                     | Purpose                                          |
 |------------------------------|--------------------------------------------------|
 | `load_data(path=None)`       | Convenience CSV loader used by UI & CLI scripts. |
@@ -27,7 +27,7 @@ All other helpers (flatline detection, schema dict, etc.) are considered **inter
 | Rule                          | Description                                         | Default Severity | Key Parameters |
 |-------------------------------|-----------------------------------------------------|------------------|------------------------------------|
 | Duplicate row                 | Ensure each `(Date, Symbol)` appears only once.     | major            | –                                  |
-| Missing date                  | Find calendar gaps per symbol.                      | major            | –                                  |
+| Missing date*                 | Find calendar gaps per symbol.                      | minor            | –                                  |
 | OHLC range violation          | `High` < `Low` or Open/Close outside `[Low, High]`. | critical         | –                                  |
 | Stagnant price                | Prices flat & `Volume = 0`.                         | major            | –                                  |
 | Flat price anomaly            | Prices flat **and** `Volume ≥ min_volume`.          | minor            | `min_volume` (UI slider)           |
@@ -40,6 +40,7 @@ All other helpers (flatline detection, schema dict, etc.) are considered **inter
 | Schema                        | Column presence & dtype assertions.                 | critical         | governed by `EXPECTED_COLUMNS`     |
 | Open interest                 | Negative OI or > `spike_factor × median`.           | minor            | `spike_factor` (hard-coded 10 ×)   |
 
+*this is a check that was tested in the first draft and applied to 2 futures which lacked continuing data. Going forward I'd a minor alert indicating if a series is disscontinued.
 ---
 
 ## 3. Severity Policy
@@ -55,14 +56,15 @@ The dashboard lets users **re-map** severities at runtime; defaults are provided
 ## 4. Configurable Thresholds
 
 Threshold sliders live in the sidebar (`app/main.py`) and store values in `st.session_state['dq_config']` via helpers in `app/utils/config.py`.
+
 NOTE: Although not really meaningful it demonstrates how quality check tresholds and parameters can be abstracted for business/tech user GUI.
 This in combination with the initial prompt for the task or the AI workflow under section 5. is to demonstrate how data quality checks show potential for pipeline automation through AI.
 
-| Key | Default | Used By |
+| Key                     | Default    | Usecase                                       |
 |-------------------------|------------|-----------------------------------------------|
 | `volume_factor`         | 10.0       | Extreme volume outlier, Volume multiplier     |
-| `pct_change_threshold`  | 0.5 (50 %) | Day-over-day jump ratio                       |
-| `iqr_multiplier`        | 3.0        | IQR (inter-quartile ranges) multiple factor   |
+| `pct_change_threshold`  | 0.05       | Day-over-day jump ratio                       |
+| `iqr_multiplier`        | 1.0        | IQR (inter-quartile ranges) multiple factor   |
 | `flat_price_min_volume` | 1          | Flat price with volumes above treshold        |
 
 ---
