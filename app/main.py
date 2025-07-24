@@ -29,11 +29,19 @@ with st.sidebar:
     else:
         # attempt default load once
         if "data" not in st.session_state:
-            try:
-                st.session_state["data"] = load_data()
-                st.info("Loaded default dataset.")
-            except FileNotFoundError:
-                st.warning("No default dataset found – please upload a CSV.")
+            from pathlib import Path as _P
+            import pandas as _pd
+
+            enriched_path = _P("app/data/processed/1full_enriched_dataset.csv")
+            if enriched_path.exists():
+                st.session_state["data"] = _pd.read_csv(enriched_path)
+                st.info("Loaded enriched dataset (1full_enriched_dataset.csv).")
+            else:
+                try:
+                    st.session_state["data"] = load_data()
+                    st.info("Loaded default dataset.")
+                except FileNotFoundError:
+                    st.warning("No default dataset found – please upload a CSV.")
 
     # Fetch dataset
     df = st.session_state["data"]
@@ -202,15 +210,26 @@ for sev in ["critical", "major", "minor"]:
 df_flags = pd.concat([df_view, flags_df], axis=1)
 
 union_mask = flags_df.any(axis=1)
-flagged_rows = df_flags[union_mask].reset_index(drop=True)
+# If AI-enriched dataset loaded, just display full dataset
+if "AI_Explanation" in df_view.columns:
+    flagged_rows = df_view.copy().reset_index(drop=True)
+else:
+    flagged_rows = df_flags[union_mask].reset_index(drop=True)
 
 # Prepare cleaned dataset (rows WITHOUT any flagged alerts)
 cleaned_df = df_view.loc[~union_mask].reset_index(drop=True)
 
 # ------------ Plot -------------
 
+# Build plotting df and ensure flag columns unique
 df_plot = df_view.copy()
 df_plot["Date_dt"] = pd.to_datetime(df_plot["Date"].astype(str), format="%Y%m%d", errors="coerce")
+
+# Add flag columns if not already present (avoid duplicate join error)
+cols_flags = ["critical_flags", "major_flags", "minor_flags"]
+missing_cols = [c for c in cols_flags if c not in df_plot.columns]
+if missing_cols:
+    df_plot = df_plot.join(df_flags[missing_cols])
 
 # Helper to classify highest severity for plotting
 def _sev_level(row):
@@ -222,7 +241,6 @@ def _sev_level(row):
         return "minor"
     return "none"
 
-df_plot = df_plot.join(df_flags[["critical_flags", "major_flags", "minor_flags"]])
 df_plot["sev_level"] = df_plot.apply(_sev_level, axis=1)
 
 sev_colors = {"critical": "#d62728", "major": "#ff7f0e", "minor": "#2ca02c", "none": "#1f77b4"}
@@ -326,7 +344,12 @@ with dash_col:
         else:
             st.subheader("Flagged rows")
             st.write(f"Rows flagged: {len(flagged_rows):,}")
-            st.dataframe(flagged_rows)
+            _df = flagged_rows.copy()
+            for col in ["AI_Explanation","AI_Trend"]:
+                if col not in _df.columns:
+                    _df[col] = ""
+            ordered = [c for c in _df.columns if c not in ("AI_Explanation","AI_Trend")] + ["AI_Explanation","AI_Trend"]
+            st.dataframe(_df[ordered])
 
             csv_flagged_rows = flagged_rows.to_csv(index=False).encode("utf-8")
             csv_full_flags = df_flags.to_csv(index=False).encode("utf-8")
@@ -362,37 +385,7 @@ with chat_col:
             {"role": "system", "content": "You are a helpful data quality assistant for futures datasets."}
         ]
 
-    # --- Enrich button ---
-    if st.button("✨ AI Enrich Dataset"):
-        import app.services.openai_service as oai
-        if "enriched_df" not in st.session_state:
-            st.session_state.enriched_df = flagged_rows.copy()
-
-        progress = st.progress(0.0, text="Enriching flagged rows…")
-        results = []
-        total = len(flagged_rows)
-        for i, row in flagged_rows.iterrows():
-            check_cols = [c for c in selected if row[c]] if selected else []
-
-            # context last 7 days for same symbol
-            sym = row["Symbol"]
-            date_val = row["Date"]
-            context_df = df_view[(df_view["Symbol"]==sym) & (df_view["Date"]>=date_val-7) & (df_view["Date"]<=date_val)]
-            explanation = oai.ai_explain(row.to_dict(), context_df.to_dict(orient="records"), check_cols)
-            trend = oai.ai_trend(context_df.to_dict(orient="records"))
-            results.append({"explanation": explanation, "trend": trend})
-            progress.progress((len(results))/total)
-
-        st.session_state.enriched_df["AI_Explanation"] = [r["explanation"] for r in results]
-        st.session_state.enriched_df["AI_Trend"] = [r["trend"] for r in results]
-
-        # persist
-        import pathlib, os
-        out_path = pathlib.Path("app/data/processed")
-        out_path.mkdir(parents=True, exist_ok=True)
-        file_path = out_path/"enriched_dataset.csv"
-        st.session_state.enriched_df.to_csv(file_path, index=False)
-        st.success(f"Enrichment complete. Saved to {file_path}")
+    # (AI Enrich button removed; enrichment should be run offline script)
 
     # --- Input on top ---
     user_prompt = st.chat_input("Ask about the data or quality checks…")
