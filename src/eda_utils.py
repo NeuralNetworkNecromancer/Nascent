@@ -73,6 +73,55 @@ def flatline_rows(df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
     flat = df[flat_mask].copy()
     return flat[flat["Volume"] == 0], flat[flat["Volume"] > 0]
 
+# --- New flat price helpers ---
+
+
+def stagnant_price(df: pd.DataFrame) -> pd.DataFrame:
+    """Flat price rows where Volume == 0 (likely non-trading day)."""
+    return flatline_rows(df)[0]
+
+
+def flat_price_anomaly(df: pd.DataFrame, min_volume: int = 1) -> pd.DataFrame:
+    """Flat price rows where Volume >= *min_volume* (suspicious)."""
+    vol_rows = flatline_rows(df)[1]
+    return vol_rows[vol_rows["Volume"] >= min_volume]
+
+
+# === Missing dates ===
+
+def missing_dates(df: pd.DataFrame) -> pd.DataFrame:
+    """Return rows representing (Symbol, Date) combinations that are missing.
+
+    Output has columns Symbol, MissingDate.
+    """
+    symbols = df["Symbol"].unique()
+    full_dates = pd.date_range(df["Date"].min(), df["Date"].max(), freq="D")
+
+    records = []
+    for sym in symbols:
+        dates_present = pd.to_datetime(df[df["Symbol"] == sym]["Date"].unique())
+        missing = set(full_dates) - set(dates_present)
+        for d in missing:
+            records.append({"Symbol": sym, "MissingDate": d.date()})
+
+    return pd.DataFrame(records)
+
+
+# === High < Low inversion ===
+
+def high_low_inversion(df: pd.DataFrame) -> pd.DataFrame:
+    """Rows where High < Low."""
+    return df[df["High"] < df["Low"]].copy()
+
+
+# === Negative numeric ===
+
+def negative_numeric(df: pd.DataFrame) -> pd.DataFrame:
+    """Rows where any numeric field is negative."""
+    numeric_cols = df.select_dtypes("number").columns
+    mask = (df[numeric_cols] < 0).any(axis=1)
+    return df[mask].copy()
+
 
 # === Outliers ===
 
@@ -115,3 +164,97 @@ def volume_anomalies(df: pd.DataFrame, factor: float = 10.0) -> Tuple[pd.DataFra
     )
 
     return zero_vol_price_move, extreme_volume_rows_df 
+
+# === Schema check ===
+
+EXPECTED_COLUMNS = {
+    "Date": "int64",
+    "Symbol": "object",
+    "Open": "int64",
+    "High": "int64",
+    "Low": "int64",
+    "Close": "int64",
+    "Volume": "int64",
+    "Open Interest": "int64",
+}
+
+
+def check_schema(df: pd.DataFrame) -> pd.DataFrame:
+    """Return DataFrame describing schema mismatches (empty if ok).
+
+    Columns: field, expected_dtype, found_dtype, note
+    """
+    issues = []
+    for col, dtype in EXPECTED_COLUMNS.items():
+        if col not in df.columns:
+            issues.append({"field": col, "expected": dtype, "found": "<missing>", "note": "column missing"})
+        else:
+            found = str(df[col].dtype)
+            if found != dtype:
+                issues.append({"field": col, "expected": dtype, "found": found, "note": "dtype mismatch"})
+    return pd.DataFrame(issues)
+
+
+# === Open interest check ===
+
+
+def check_oi(df: pd.DataFrame, spike_factor: float = 10.0) -> pd.DataFrame:
+    """Flag rows where Open Interest is negative or extreme spike (>factor×median)."""
+    if "Open Interest" not in df.columns:
+        return pd.DataFrame()
+    oi_series = df["Open Interest"]
+    median = oi_series.median() if not oi_series.empty else 0
+    mask = (oi_series < 0) | (oi_series > median * spike_factor)
+    return df[mask].copy() 
+
+# === Registry ===
+
+DESCRIPTIONS = {
+    "Duplicate row": "Ensure each (Date, Symbol) appears only once.",
+    "Missing date": "Compare a symbol's dates to the calendar to flag gaps.",
+    "OHLC range violation": "Flag rows where High < Low or Open/Close lie outside [Low, High].",
+    "Stagnant price": "Price flat and Volume = 0 (likely closed or no trades).",
+    "Flat price anomaly": "Price flat while Volume ≥ threshold (configurable).",
+    "Zero-volume with move": "Alert when price changes but Volume = 0.",
+    "Extreme volume outlier": "Volume exceeds N × median for a symbol (configurable).",
+    "Day-over-day jump": "Close changes more than threshold % between consecutive days.",
+    "Absolute price bounds (IQR)": "Prices that are unusually high or low for the symbol.",
+    "High < Low inversion": "Explicit test where reported High is less than Low.",
+    "Negative numeric": "Any negative price, volume, or open-interest fields.",
+    "Schema": "Assert expected columns & dtypes.",
+    "Open interest": "Flag negative OI or extreme spikes.",
+}
+
+
+DEFAULT_SEVERITIES = {
+    "Duplicate row": "major",
+    "Missing date": "major",
+    "OHLC range violation": "critical",
+    "Stagnant price": "minor",
+    "Flat price anomaly": "major",
+    "Zero-volume with move": "major",
+    "Extreme volume outlier": "major",
+    "Day-over-day jump": "minor",
+    "Absolute price bounds (IQR)": "minor",
+    "High < Low inversion": "critical",
+    "Negative numeric": "critical",
+    "Schema": "critical",
+    "Open interest": "minor",
+}
+
+
+CHECK_FUNCTIONS = {
+    "Duplicate row": duplicated_rows,
+    "Missing date": missing_dates,
+    "OHLC range violation": ohlc_integrity_violations,
+    "Stagnant price": stagnant_price,
+    "Flat price anomaly": flat_price_anomaly,
+    "Zero-volume with move": lambda d: volume_anomalies(d)[0],
+    "Extreme volume outlier": lambda d: volume_anomalies(d)[1],
+    "Day-over-day jump": pct_change_outliers,
+    "Absolute price bounds (IQR)": iqr_price_outliers,
+    "High < Low inversion": high_low_inversion,
+    "Negative numeric": negative_numeric,
+    "Schema": check_schema,
+    "Open interest": check_oi,
+} 
