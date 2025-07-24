@@ -32,10 +32,14 @@ with st.sidebar:
             from pathlib import Path as _P
             import pandas as _pd
 
-            enriched_path = _P("app/data/processed/1full_enriched_dataset.csv")
-            if enriched_path.exists():
-                st.session_state["data"] = _pd.read_csv(enriched_path)
-                st.info("Loaded enriched dataset (1full_enriched_dataset.csv).")
+            candidates = [
+                _P("app/data/processed/enriched_futures_data.csv"),
+                _P("app/data/processed/1full_enriched_dataset.csv"),
+            ]
+            found = next((p for p in candidates if p.exists()), None)
+            if found is not None:
+                st.session_state["data"] = _pd.read_csv(found)
+                st.info(f"Loaded enriched dataset ({found.name}).")
             else:
                 try:
                     st.session_state["data"] = load_data()
