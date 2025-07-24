@@ -6,10 +6,10 @@ import pandas as pd
 # Removed unused datetime/date import.
 import altair as alt
 
-from app.utils.caching import load_data
-from app.utils.config import get_config, set_config, DEFAULT_SEVERITIES
+from .utils.caching import load_data
+from .utils.config import get_config, set_config, DEFAULT_SEVERITIES
 from src import quality_checks as eu
-from app.services.vector_db import query as rag_query
+from .services.vector_db import query as rag_query
 from pathlib import Path
 
 DESCRIPTIONS = eu.DESCRIPTIONS
