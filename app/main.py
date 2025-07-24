@@ -1,24 +1,33 @@
 """Unified Data-Quality Dashboard – upload, configure, analyse, download."""
 
+# ---------------------------------------------------------------------------
+# Dynamic path patching so that the app runs both when imported as
+# `app.main` (package context) *and* when executed directly by Streamlit as
+# `python app/main.py` (no package context).
+# ---------------------------------------------------------------------------
+
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+ROOT_DIR = Path(__file__).resolve().parent.parent  # repo root
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
+# The patch above guarantees that `import app.*` works regardless of how the
+# file is executed.
+
 import streamlit as st
 import pandas as pd
 
 # Removed unused datetime/date import.
 import altair as alt
 
-try:
-    # Prefer absolute import when package is discoverable (Streamlit Cloud root).
-    from app.utils.caching import load_data  # type: ignore
-    from app.utils.config import (
-        get_config,  # type: ignore
-        set_config,
-        DEFAULT_SEVERITIES,
-    )
-    from app.services.vector_db import query as rag_query  # type: ignore
-except ImportError:  # Fallback to relative imports when run as "python app/main.py"
-    from .utils.caching import load_data
-    from .utils.config import get_config, set_config, DEFAULT_SEVERITIES
-    from .services.vector_db import query as rag_query
+# After path patch, absolute imports will always succeed
+from app.utils.caching import load_data
+from app.utils.config import get_config, set_config, DEFAULT_SEVERITIES
+from app.services.vector_db import query as rag_query
 
 from src import quality_checks as eu
 from pathlib import Path
