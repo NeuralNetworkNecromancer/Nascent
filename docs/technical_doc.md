@@ -77,6 +77,8 @@ This in combination with the initial prompt for the task or the AI workflow unde
 NOTE: Also results aren't great yet due to limited infrastructure, ressources and time. There are a lot of low hanging fruits to optimize this pipeline.
 This in combination with the initial prompt for the task or the config workflow under section 4. is to demonstrate how data quality checks show potential for pipeline automation through AI.
 
+HINT: The bot is just standart RAG, based on explainer and trend. In order to see the retrieval and final prompt please use "<- Manage app" button on the bottom right. It shows logs.
+
 ```
 raw CSV ─▶ checks ─▶ flagged dataset
             │
