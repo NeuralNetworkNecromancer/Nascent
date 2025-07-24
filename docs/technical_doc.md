@@ -2,6 +2,8 @@
 
 *Last updated: 2025-07-24*
 
+Streamlit link: https://nascent.streamlit.app/
+
 This document is the **single source of truth** for how our Daily Futures prototype validates raw data, how those alerts surface in the Streamlit dashboard, and how the optional GPT-powered enrichment works.
 
 ---
