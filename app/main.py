@@ -53,10 +53,17 @@ with st.sidebar:
     st.divider()
     st.header("3️⃣ Configuration")
     cfg = get_config()
+    # --- Volume factor slider with extended range and safe default ---
+    vol_options = [10, 20, 50, 100, 1000]
+    cfg_vol = int(cfg.get("volume_factor", 10))
+    if cfg_vol not in vol_options:
+        vol_options.append(cfg_vol)
+        vol_options = sorted(vol_options)
+
     vol_factor = st.select_slider(
         "Extreme volume factor (× median)",
-        options=[2, 5, 10, 20],
-        value=int(cfg.get("volume_factor", 10)),
+        options=vol_options,
+        value=cfg_vol if cfg_vol in vol_options else vol_options[0],
         help="Flags rows where Volume exceeds this multiple of the symbol's median volume.",
     )
 

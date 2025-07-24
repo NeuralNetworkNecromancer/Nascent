@@ -157,7 +157,12 @@ def volume_anomalies(df: pd.DataFrame, factor: float = 10.0) -> Tuple[pd.DataFra
 
     extreme_volume_rows = []
     for symbol, grp in df.groupby("Symbol"):
-        threshold = grp["Volume"].median() * factor
+        # Use median of *non-zero* volumes to avoid threshold always zero when volumes are sparse
+        median_vol = grp.loc[grp["Volume"] > 0, "Volume"].median()
+        # Fallback to 0 if all volumes are zero for that symbol
+        if pd.isna(median_vol) or median_vol == 0:
+            continue
+        threshold = median_vol * factor
         extreme_volume_rows.append(grp[grp["Volume"] > threshold])
     extreme_volume_rows_df = (
         pd.concat(extreme_volume_rows) if extreme_volume_rows else pd.DataFrame(columns=df.columns)
