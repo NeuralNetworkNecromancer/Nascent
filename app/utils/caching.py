@@ -1,4 +1,8 @@
-"""Caching utilities for Streamlit app."""
+"""Caching utilities for Streamlit app.
+
+Thin wrapper around :pyfunc:`src.quality_checks.load_data` providing
+`st.cache_data` memoisation so repeated uploads or dashboard reloads
+do not re-parse the CSV."""
 
 from pathlib import Path
 import pandas as pd
@@ -9,7 +13,7 @@ from src.quality_checks import load_data as _load_data
 
 @st.cache_data(show_spinner="Loading dataset...")
 def load_data(path: str | Path | None = None) -> pd.DataFrame:
-    """Cached wrapper around src.eda_utils.load_data"""
+    """Cached wrapper around :pyfunc:`src.quality_checks.load_data`."""
     try:
         return _load_data(path)
     except FileNotFoundError as exc:

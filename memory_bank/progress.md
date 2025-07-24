@@ -14,11 +14,14 @@
    • Dashboard auto-loads `enriched_futures_dataset.csv` and displays `AI_Explanation` & `AI_Trend`.
 6. Removed obsolete notebook pages and Chat page; added slim chat pane in dashboard.
 7. Documentation refresh across memory_bank: overview, stack, system docs markdowns.
+8. Added local ChromaDB vector store, indexing script, and retrieval-augmented chat with contextual examples & similarity scoring.
+9. **Refactor:** Removed legacy `eda_utils.py`, merged into `src/quality_checks.py`, unified severity config, updated caching & README, added `docs/data_quality_checks.md`.
 
 ## In-Progress / Next
 * CI pipeline & tests for `quality_checks` rules.
 * Local vector-store setup with ChromaDB for RAG indexing (P6).
 * Optional RAG vector index (stretch).
+* Finalize: codebase cleanup, documentation polish & Streamlit Cloud deployment
 
 ## Known Issues
 * Enrichment script is single-threaded – runtime ~ N×80 s; consider async batch.

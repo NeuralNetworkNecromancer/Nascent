@@ -6,5 +6,5 @@
 - [x] **P4-Cleaning:** flag join logic + cleaned view in dashboard
 - [x] **P5-Enrichment (v1):** row-level OpenAI explanations via offline script (`scripts/enrich_full_dataset.py`) and integrated view
 - [ ] **P6-Enrichment (v2):** automated trend detection & vector-store indexing (stretch)
-- [ ] **P7-Docs & CI:** update README + markdown docs, add pytest/black pre-commit
+- [x] **P7-Docs & CI:** update README + markdown docs, add pytest/black pre-commit
 - [ ] **P8-Deploy:** optional Streamlit Community Cloud manifest & Dockerfile

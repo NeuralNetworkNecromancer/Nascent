@@ -13,7 +13,6 @@ from app.services.vector_db import query as rag_query
 from pathlib import Path
 
 DESCRIPTIONS = eu.DESCRIPTIONS
-DEFAULT_SEVERITIES = DEFAULT_SEVERITIES
 CHECK_FUNCTIONS = eu.CHECK_FUNCTIONS
 
 TEMPLATE_CHAT = Path("app/prompts/chat_rag.md").read_text()

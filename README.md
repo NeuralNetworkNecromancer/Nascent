@@ -1,27 +1,52 @@
-# Nascent Daily Futures Data-Quality Prototype
+# Daily Futures – Data-Quality Dashboard  🚀
 
-This repository contains a reproducible, config-driven pipeline that ingests a daily futures CSV, runs automated data-quality checks, flags & cleans anomalies, and outputs human-readable + machine-usable diagnostics.
+Interactive Streamlit prototype that **automates data-quality checks** for end-of-day futures data, enriches anomalies with GPT-3.5 explanations, and makes the results explorable via a single-page dashboard.
 
-## Setup
+---
+
+## Quick-start
+
 ```bash
-python -m venv .venv
-source .venv/bin/activate  # or .venv\Scripts\activate on Windows
+# 1. Install deps
+python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
+
+# 2. Run the dashboard
+streamlit run streamlit_app.py
+
+# (Optional)  GPT enrichment & vector index
+export OPENAI_API_KEY="sk-…"
+python scripts/enrich_full_dataset.py  # adds AI_Explanation column
 ```
 
-## Run Qdrant (optional for enrichment)
-```bash
-docker compose up -d qdrant
-```
+---
 
-## Notebooks
-| Notebook | Purpose |
-|----------|---------|
-| 00_exploration.ipynb | Explore schema, basic stats, visuals |
-| 01_quality_checks.ipynb | Prototype & test validation logic |
-| 02_cleaning.ipynb | Dedupe, fix, and flag anomalies |
-| 03_summary.ipynb | Generate charts & summary metrics |
-| 04_enrich.ipynb | LLM-based row-level enrichment |
+## Documentation
+
+• Full rule catalogue & architecture: [`docs/data_quality_checks.md`](docs/data_quality_checks.md)
+
+---
+
+## Repo Layout (key parts)
+
+| Path | Purpose |
+|------|---------|
+| `app/` | Streamlit UI, prompts, OpenAI wrapper, config helpers |
+| `src/quality_checks.py` | Core validation library (pure pandas) |
+| `scripts/` | Batch utilities: GPT enrichment, merging, flag calc |
+| `memory_bank/` | Planning & progress docs (internal) |
+| `docs/` | Project & API documentation |
+
+---
+
+## Deployment to Streamlit Community Cloud
+1. Push repo to GitHub.
+2. Create new app ➜ pick `streamlit_app.py`.
+3. Add `OPENAI_API_KEY` secret (optional for chat/enrichment).
+4. Hit *Deploy* 🚀.
+
+---
 
 ## License
-MIT 
+
+MIT. 
